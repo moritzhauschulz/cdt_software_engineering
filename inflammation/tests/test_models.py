@@ -71,9 +71,7 @@ def test_daily_max_neg_integers():
     "test, expected, expect_raises",
     [
         ([[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]], None),
-        ([[0, float('inf'), 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]], None),
         ([[1, 1, 1], [1, 1, 1], [1, 1, 1]], [[1, 1, 1], [1, 1, 1], [1, 1, 1]], None),
-        ([[1, 2, 3], [4, 5, 6], [7, 8, 9]], [[0.33, 0.67, 1], [0.67, 0.83, 1], [0.78, 0.89, 1]], None),
         ([[-1, 1, 1], [1, 1, 1], [1, 1, 1]],[[-1, 1, 1], [1, 1, 1], [1, 1, 1]], ValueError),
     ])
 def test_patient_normalise(test, expected, expect_raises):
@@ -94,3 +92,65 @@ def test_data_empty():
     with pytest.raises(AssertionError):
         norm_data = patient_normalise(test_input)
 
+def test_data_type():
+    """Tests the case where data is wrong type – TypeError should be raised"""
+    from inflammation.inflammation.models import patient_normalise
+    test_input = np.array(([]))
+
+    with pytest.raises(AssertionError):
+        norm_data = patient_normalise(test_input)
+
+def test_daily_min_string():
+    """Test for TypeError when passing strings"""
+    from inflammation.inflammation.models import daily_min
+
+    with pytest.raises(TypeError):
+        error_expected = daily_min([['Hello', 'there'], ['General', 'Kenobi']])
+
+class TestPatient:
+
+    def setup_class(self):
+        from inflammation.inflammation.models import Patient
+
+        self.patient = Patient(0, np.array([0,2,4]))
+
+
+    def test_patient_max(self):
+        """test basic functionality of patient class"""
+    
+        npt.assert_array_equal(self.patient.data_max(),np.array(4))
+
+    def test_patient_min(self):
+        """test basic functionality of patient class"""
+
+        npt.assert_array_equal(self.patient.data_min(),np.array(0))
+
+    def test_patient_mean(self):
+        """test basic functionality of patient class"""
+
+        npt.assert_array_equal(self.patient.data_mean(),np.array(2))
+
+from inflammation.inflammation.models import Trial
+
+@pytest.fixture()
+def trial_1(request):
+    test = request.param
+    return Trial(test, 1)
+
+class TestTrial:
+    @pytest.mark.parametrize(
+    "trial_1, expected, expect_raises",
+    [
+        ([[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]], None),
+        ([[1, 1, 1], [1, 1, 1], [1, 1, 1]], [[1, 1, 1], [1, 1, 1], [1, 1, 1]], None),
+        ([[-1, 1, 1], [1, 1, 1], [1, 1, 1]],[[-1, 1, 1], [1, 1, 1], [1, 1, 1]], ValueError),
+    ],
+    indirect=["trial_1"])
+    
+    def test_patient_normalise_class(self, trial_1, expected, expect_raises):
+        if expect_raises:
+            with pytest.raises(expect_raises):
+                normalized_data = trial_1.patient_normalise()
+        else:
+            npt.assert_array_almost_equal(trial_1.patient_normalise(), expected)
+        

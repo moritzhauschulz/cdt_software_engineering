@@ -9,15 +9,6 @@ and each column represents a single day across all patients.
 
 import numpy as np
 
-import pytest
-
-def test_daily_min_string():
-    """Test for TypeError when passing strings"""
-    from inflammation.models import daily_min
-
-    with pytest.raises(TypeError):
-        error_expected = daily_min([['Hello', 'there'], ['General', 'Kenobi']])
-
 def load_csv(filename):
     """Load a Numpy array from a CSV
 
@@ -51,9 +42,82 @@ def patient_normalise(data):
     assert min(data.shape) > 0, 'Data must not be empty'
     if np.any(data < 0):
         raise ValueError('Inflammation values should not be negative')
-    max = np.nanmax(data, axis=1)
+    if not isinstance(data, np.ndarray):
+        raise TypeError('Data should be a numpy array')
+    data_max = np.nanmax(data, axis=1)
     with np.errstate(invalid='ignore', divide='ignore'):
-        normalised = data / max[:, np.newaxis]
+        normalised = data_max / data_max[:, np.newaxis]
     normalised[np.isnan(normalised)] = 0
     normalised[normalised < 0] = 0
     return normalised
+
+class Patient:
+    def __init__(self, id, data):
+        self.id = id
+        self.data = data
+    
+    def data_mean(self):
+        return np.mean(self.data)
+    
+    def data_max(self):
+        return np.max(self.data)
+    
+    def data_min(self):
+        return np.min(self.data)
+    
+class Trial:
+    def __init__(self, data, id):
+        self.id = id
+        self.data = np.array(data)
+
+    @staticmethod
+    def load_csv(filename):
+        """Load a Numpy array from a CSV
+
+        :param filename: Filename of CSV to load
+        """
+        return np.loadtxt(fname=filename, delimiter=',')
+
+    @staticmethod
+    def from_csv(filename, id):
+        data = load_csv(filename)
+        return Trial(data, id)
+
+    def daily_mean(self):
+        """Calculate the daily mean of a 2d inflammation data array."""
+        return np.mean(self.data, axis=0)
+
+
+    def daily_max(self):
+        """Calculate the daily max of a 2d inflammation data array."""
+        return np.max(self.data, axis=0)
+
+
+    def daily_min(self):
+        """Calculate the daily min of a 2d inflammation data array."""
+        return np.min(self.data, axis=0)
+
+    def patient_normalise(self):
+        """
+        Normalise patient data from a 2D inflammation data array.
+
+        NaN values are ignored, and normalised to 0.
+
+        Negative values are rounded to 0.
+        """
+        if np.any(self.data < 0):
+            raise ValueError('Inflammation values should not be negative')
+        if not isinstance(self.data, np.ndarray):
+            raise TypeError('data input should be ndarray')
+        if len(self.data.shape) != 2:
+            raise ValueError('inflammation array should be 2-dimensional')
+        max_data = np.nanmax(self.data, axis=1)
+        with np.errstate(invalid='ignore', divide='ignore'):
+            normalised = self.data / max_data[:, np.newaxis]
+        normalised[np.isnan(normalised)] = 0
+        normalised[normalised < 0] = 0
+        return normalised
+    
+    def get_patient(self, id):
+        data = self.data[0,:]
+        return Patient(id, data)
